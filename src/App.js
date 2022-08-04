@@ -8,8 +8,40 @@ export default function App() {
   const [count, setCount] = React.useState(null);
   const [txnHash, setTxnHash] = React.useState("");
   const [connectedAccount, setConnectedAccount] = React.useState("");
-  const contractAddress = "0xFA7B700f5c77E92B32A37B04f5950e007E2dEF5c";
+  const [allWaves, setAllWaves] = React.useState([]);
+  const [waveMessage, setWaveMessage] = React.useState("");
+  const contractAddress = "0x1D1c7eF7b0Ee869d263bAD2004178C973d94e893";
   const contractABI = abi.abi;
+
+  const getAllWaves = async () => {
+    try {
+      const { ethereum } = window;
+      if (ethereum) {
+        const provider = new ethers.providers.Web3Provider(ethereum);
+        const signer = provider.getSigner();
+        const wavePortalContract = new ethers.Contract(
+          contractAddress,
+          contractABI,
+          signer
+        );
+        const waves = await wavePortalContract.getAllWaves();
+        let wavesFormatted = [];
+        waves.forEach((wave) => {
+          wavesFormatted.push({
+            address: wave.waver,
+            timestamp: new Date(wave.timestamp * 1000),
+            message: wave.message,
+          });
+        });
+        setAllWaves(wavesFormatted);
+      } else {
+        console.log("no metamask");
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
   const checkIfWalletConnected = async () => {
     try {
       const { ethereum } = window;
@@ -25,6 +57,7 @@ export default function App() {
         const account = accounts[0];
         console.log("Found authed acc", account);
         setConnectedAccount(account);
+        getAllWaves();
       } else {
         console.log("no authed accs");
       }
@@ -49,7 +82,7 @@ export default function App() {
     }
   };
 
-  const wave = async () => {
+  const wave = async (message) => {
     try {
       const { ethereum } = window;
       if (ethereum) {
@@ -65,13 +98,15 @@ export default function App() {
         let interactedCount = await wavePortalContract.getWhoInteracted();
         console.log("Retrieved total wave count...", count.toNumber());
         console.log(`${interactedCount} interacted`);
+
         setIsLoading(true);
-        const waveTxn = await wavePortalContract.wave();
+        const waveTxn = await wavePortalContract.wave(message);
         console.log("Processing...", waveTxn.hash);
 
         await waveTxn.wait().then(() => {
           setIsLoading(false);
           setTxnHash(waveTxn.hash);
+          setWaveMessage("");
         });
         console.log("Done -- ", waveTxn.hash);
 
@@ -90,10 +125,10 @@ export default function App() {
 
   React.useEffect(() => {
     checkIfWalletConnected();
-  }, []);
+  }, [txnHash]);
 
   React.useEffect(() => {
-    async function getWaves() {
+    async function getNumberWaves() {
       try {
         const { ethereum } = window;
         if (ethereum) {
@@ -114,8 +149,17 @@ export default function App() {
         console.log(e);
       }
     }
-    getWaves();
+    getNumberWaves();
   }, [contractABI, txnHash]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (waveMessage) {
+      wave(waveMessage);
+    } else {
+      alert("please enter some message");
+    }
+  };
 
   return (
     <div className='mainContainer'>
@@ -128,19 +172,36 @@ export default function App() {
         </div>
 
         <div className='bio'>
-          Connect wallet and wave for now, then we will think about mint...
+          Connect wallet, type in message and wave for now, then we will think
+          about mint...
         </div>
         <div>
           <p>Number of total waves with the contract: {count}</p>
         </div>
-        <button className='waveButton' onClick={wave}>
-          Wave at Me
-        </button>
-        {isLoading && <p>let me load this...</p>}
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
+        >
+          <textarea
+            disabled={isLoading}
+            value={waveMessage}
+            onChange={(e) => setWaveMessage(e.currentTarget.value)}
+          ></textarea>
+          <button disabled={isLoading} className='waveButton' type='submit'>
+            Wave at Me
+          </button>
+        </form>
+        {isLoading && <p>head to metamask and let me process this action...</p>}
         {txnHash && (
           <div>
             Done, check{" "}
-            <a href={`https://rinkeby.etherscan.io/tx/${txnHash}`}>hash</a>
+            <a
+              target='_blank'
+              rel='noopener noreferrer'
+              href={`https://rinkeby.etherscan.io/tx/${txnHash}`}
+            >
+              hash
+            </a>
           </div>
         )}
         {!connectedAccount && (
@@ -148,6 +209,19 @@ export default function App() {
             Connect wallet
           </button>
         )}
+        {allWaves.map((wave) => (
+          <div
+            style={{
+              backgroundColor: "OldLace",
+              marginTop: "1rem",
+              padding: "0.5rem",
+            }}
+          >
+            <h4>Address: {wave.address}</h4>
+            <h4>Time: {wave.timestamp.toString()}</h4>
+            <h3>Message: {wave.message}</h3>
+          </div>
+        ))}
       </div>
     </div>
   );
