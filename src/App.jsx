@@ -4,7 +4,6 @@ import "./App.scss";
 import abi from "./utils/WavePortal.json";
 
 import MessageInput from "./components/MessageInput";
-import Circle from "./components/Circle";
 
 export default function App() {
   const [isLoading, setIsLoading] = React.useState(false);
@@ -17,6 +16,7 @@ export default function App() {
   const contractAddress = "0x245E9204E33f789258743089Ff15b6A2d6471C49";
   const contractABI = abi.abi;
 
+  // this should update all waves
   const getAllWaves = React.useCallback(async () => {
     try {
       const { ethereum } = window;
@@ -49,16 +49,12 @@ export default function App() {
     }
   }, [contractABI]);
 
+  // this checks of any accounts connected
   const checkIfWalletConnected = async () => {
     try {
-      const { ethereum } = window;
-      if (!ethereum) {
-        console.log("Make sure you have MetaMask");
-      } else {
-        console.log("window has eth object injected", ethereum);
-      }
-
-      const accounts = await ethereum.request({ method: "eth_accounts" });
+      const accounts = await window.ethereum.request({
+        method: "eth_accounts",
+      });
 
       if (accounts.length !== 0) {
         const account = accounts[0];
@@ -72,6 +68,7 @@ export default function App() {
     }
   };
 
+  // this is to connect wallet
   const connectWallet = async () => {
     try {
       const { ethereum } = window;
@@ -88,6 +85,7 @@ export default function App() {
     }
   };
 
+  // this is a base function from contract to interact with it
   const wave = async (message) => {
     try {
       const { ethereum } = window;
@@ -121,10 +119,37 @@ export default function App() {
     }
   };
 
+  // this checks on first render if user has metamask
   React.useEffect(() => {
-    checkIfWalletConnected();
-    getAllWaves();
+    const { ethereum } = window;
+    if (!ethereum) {
+      console.log("Make sure you have MetaMask");
+    } else {
+      console.log("window has eth object injected", ethereum);
+    }
+  }, []);
 
+  // this checks if wallet is connected and also gets all waves when connected and depends on account change
+  React.useEffect(() => {
+    const initialise = async () => {
+      await checkIfWalletConnected();
+      await getAllWaves();
+    };
+    initialise();
+    if (window.ethereum) {
+      window.ethereum.on("accountsChanged", async () => {
+        initialise();
+      });
+    }
+    return () => {
+      window.ethereum.off("accountsChanged", async () => {
+        initialise();
+      });
+    };
+  }, [getAllWaves]);
+
+  // this adds NewWave event from contract listener and removes on umnount
+  React.useEffect(() => {
     let wavePortalContract;
     const onNewWave = (from, timestamp, message) => {
       console.log("NewWave", from, timestamp, message);
@@ -151,68 +176,73 @@ export default function App() {
       wavePortalContract.on("NewWave", onNewWave);
     }
 
-    return {
-      if(wavePortalContract) {
+    return () => {
+      if (wavePortalContract) {
         wavePortalContract.off("NewWave", onNewWave);
-      },
+      }
     };
-  }, [contractABI, getAllWaves]);
+  }, [contractABI]);
 
   return (
-    <Circle>
-      <div className='mainContainer'>
-        <div className='dataContainer'>
-          <div className='header'>
-            <h1>Introduction to web3 development</h1>
-            <h6>made by t0rb1k</h6>
-          </div>
-          <p className='explanation'>
-            Connect wallet, type in message and wave for now, then we will
-            think...
-          </p>
-          <p>Number of total waves with the contract: {count}</p>
-          <MessageInput
-            isLoading={isLoading}
-            waveMessage={waveMessage}
-            setWaveMessage={setWaveMessage}
-            wave={wave}
-          />
-          {isLoading && (
-            <p>head to metamask and let me process this action...</p>
-          )}
-          {txnHash && (
-            <div>
-              Done, check{" "}
-              <a
-                target='_blank'
-                rel='noopener noreferrer'
-                href={`https://rinkeby.etherscan.io/tx/${txnHash}`}
-              >
-                hash
-              </a>
-            </div>
-          )}
-          {allWaves.map((wave) => (
-            <div
-              style={{
-                backgroundColor: "OldLace",
-                marginTop: "1rem",
-                padding: "0.5rem",
-                boxShadow: "4px 4px 8px 0px rgba(34, 60, 80, 0.2)",
-              }}
-            >
-              <h4>Address: {wave.address}</h4>
-              <h4>Time: {wave.timestamp.toString()}</h4>
-              <h3>Message: {wave.message}</h3>
-            </div>
-          ))}
-          {!connectedAccount && (
-            <button className='waveButton' onClick={connectWallet}>
-              Connect wallet
-            </button>
-          )}
+    <div className='mainContainer'>
+      <div className='dataContainer'>
+        <div className='header'>
+          <h1>Introduction to web3 development</h1>
+          <h6>made by t0rb1k</h6>
         </div>
+        <p className='explanation'>
+          Connect wallet, type in message and wave for now, then we will
+          think...
+        </p>
+        <p>
+          Number of total waves with the contract:{" "}
+          {count ? (
+            count
+          ) : (
+            <span style={{ fontStyle: "italic", fontWeight: "bold" }}>
+              first connect wallet to Rinkeby
+            </span>
+          )}
+        </p>
+        <MessageInput
+          isLoading={isLoading}
+          waveMessage={waveMessage}
+          setWaveMessage={setWaveMessage}
+          wave={wave}
+        />
+        {isLoading && <p>head to metamask and let me process this action...</p>}
+        {txnHash && (
+          <div>
+            Done, check{" "}
+            <a
+              target='_blank'
+              rel='noopener noreferrer'
+              href={`https://rinkeby.etherscan.io/tx/${txnHash}`}
+            >
+              hash
+            </a>
+          </div>
+        )}
+        {allWaves.map((wave) => (
+          <div
+            style={{
+              backgroundColor: "OldLace",
+              marginTop: "1rem",
+              padding: "0.5rem",
+              boxShadow: "4px 4px 8px 0px rgba(34, 60, 80, 0.2)",
+            }}
+          >
+            <h4>Address: {wave.address}</h4>
+            <h4>Time: {wave.timestamp.toString()}</h4>
+            <h3>Message: {wave.message}</h3>
+          </div>
+        ))}
+        {!connectedAccount && (
+          <button className='waveButton' onClick={connectWallet}>
+            Connect wallet
+          </button>
+        )}
       </div>
-    </Circle>
+    </div>
   );
 }

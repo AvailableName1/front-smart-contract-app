@@ -1,6 +1,8 @@
 .input {
   resize: vertical;
   transition: 180ms box-shadow ease-in-out;
+  border-radius: 0.4rem;
+  padding: 0.8rem;
   &:focus {
     border-color: hsl(245, 100%, 42%);
     box-shadow: 0 0 0 3px hsla(245, 100%, calc(42% + 40%), 0.8);
