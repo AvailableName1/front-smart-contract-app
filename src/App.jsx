@@ -7,6 +7,7 @@ import MessageInput from "./components/MessageInput";
 
 export default function App() {
   const [isLoading, setIsLoading] = React.useState(false);
+  const [display, setDisplay] = React.useState(false);
   const [count, setCount] = React.useState(null);
   const [txnHash, setTxnHash] = React.useState("");
   const [connectedAccount, setConnectedAccount] = React.useState("");
@@ -60,11 +61,13 @@ export default function App() {
         const account = accounts[0];
         console.log("Found authed acc", account);
         setConnectedAccount(account);
+        setDisplay(true);
       } else {
-        console.log("no authed accs");
+        throw new Error("no accs connected");
       }
     } catch (e) {
       console.log(e);
+      setDisplay(false);
     }
   };
 
@@ -190,10 +193,6 @@ export default function App() {
           <h1>Introduction to web3 development</h1>
           <h6>made by t0rb1k</h6>
         </div>
-        <p className='explanation'>
-          Connect wallet, type in message and wave for now, then we will
-          think...
-        </p>
         <p>
           Number of total waves with the contract:{" "}
           {count ? (
@@ -204,14 +203,19 @@ export default function App() {
             </span>
           )}
         </p>
-        <MessageInput
-          isLoading={isLoading}
-          waveMessage={waveMessage}
-          setWaveMessage={setWaveMessage}
-          wave={wave}
-        />
+        {display && (
+          <p className='explanation'>Type your message and send a wave</p>
+        )}
+        {display && (
+          <MessageInput
+            isLoading={isLoading}
+            waveMessage={waveMessage}
+            setWaveMessage={setWaveMessage}
+            wave={wave}
+          />
+        )}
         {isLoading && <p>head to metamask and let me process this action...</p>}
-        {txnHash && (
+        {display && txnHash && (
           <div>
             Done, check{" "}
             <a
@@ -223,21 +227,22 @@ export default function App() {
             </a>
           </div>
         )}
-        {allWaves.map((wave) => (
-          <div
-            style={{
-              backgroundColor: "OldLace",
-              marginTop: "1rem",
-              padding: "0.5rem",
-              boxShadow: "4px 4px 8px 0px rgba(34, 60, 80, 0.2)",
-            }}
-          >
-            <h4>Address: {wave.address}</h4>
-            <h4>Time: {wave.timestamp.toString()}</h4>
-            <h3>Message: {wave.message}</h3>
-          </div>
-        ))}
-        {!connectedAccount && (
+        {display &&
+          allWaves.map((wave) => (
+            <div
+              style={{
+                backgroundColor: "OldLace",
+                marginTop: "1rem",
+                padding: "0.5rem",
+                boxShadow: "4px 4px 8px 0px rgba(34, 60, 80, 0.2)",
+              }}
+            >
+              <h4>Address: {wave.address}</h4>
+              <h4>Time: {wave.timestamp.toString()}</h4>
+              <h3>Message: {wave.message}</h3>
+            </div>
+          ))}
+        {(!connectedAccount || !display) && (
           <button className='waveButton' onClick={connectWallet}>
             Connect wallet
           </button>
