@@ -8,6 +8,7 @@ import MessageInput from "./components/MessageInput";
 export default function App() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [display, setDisplay] = React.useState(false);
+  const [chainApplicable, setChainApplicable] = React.useState(true);
   const [count, setCount] = React.useState(null);
   const [txnHash, setTxnHash] = React.useState("");
   const [connectedAccount, setConnectedAccount] = React.useState("");
@@ -50,18 +51,23 @@ export default function App() {
     }
   }, [contractABI]);
 
-  // this checks of any accounts connected
+  // this checks of any accounts connected and to the right network
   const checkIfWalletConnected = async () => {
     try {
       const accounts = await window.ethereum.request({
         method: "eth_accounts",
       });
+      const chainId = await window.ethereum.request({ method: "eth_chainId" });
 
-      if (accounts.length !== 0) {
+      if (accounts.length !== 0 && chainId === "0x4") {
         const account = accounts[0];
         console.log("Found authed acc", account);
         setConnectedAccount(account);
         setDisplay(true);
+        setChainApplicable(true);
+      } else if (chainId !== "0x4") {
+        setChainApplicable(false);
+        throw new Error("please switch to Rinkeby test Network");
       } else {
         throw new Error("no accs connected");
       }
@@ -84,7 +90,18 @@ export default function App() {
       console.log("Connected", accounts[0]);
       setConnectedAccount(accounts[0]);
     } catch (e) {
-      console.log(e);
+      console.error(e);
+    }
+  };
+
+  const changeNetwork = async () => {
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0x4" }],
+      });
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -132,22 +149,28 @@ export default function App() {
     }
   }, []);
 
-  // this checks if wallet is connected and also gets all waves when connected and depends on account change
+  // this checks if wallet is connected and also gets all waves when connected and depends on account change also looks for chain change and reloads if any
   React.useEffect(() => {
     const initialise = async () => {
       await checkIfWalletConnected();
       await getAllWaves();
+    };
+    // we want to reload page every time network changes
+    const handleChainChanged = (_chainId) => {
+      window.location.reload();
     };
     initialise();
     if (window.ethereum) {
       window.ethereum.on("accountsChanged", async () => {
         initialise();
       });
+      window.ethereum.on("chainChanged", handleChainChanged);
     }
     return () => {
-      window.ethereum.off("accountsChanged", async () => {
+      window.ethereum.removeListener("accountsChanged", async () => {
         initialise();
       });
+      window.ethereum.removeListener("chainChanged", handleChainChanged);
     };
   }, [getAllWaves]);
 
@@ -191,7 +214,17 @@ export default function App() {
       <div className='dataContainer'>
         <div className='header'>
           <h1>Introduction to web3 development</h1>
-          <h6>made by t0rb1k</h6>
+          <h6>
+            made by{" "}
+            <a
+              className='git-link'
+              href='https://github.com/AvailableName1'
+              target='_blank'
+              rel='noopener noreferrer'
+            >
+              t0rb1k
+            </a>
+          </h6>
         </div>
         <p>
           Number of total waves with the contract:{" "}
@@ -230,9 +263,11 @@ export default function App() {
         {display &&
           allWaves.map((wave) => (
             <div
+              key={wave.timestamp.toString()}
               style={{
-                backgroundColor: "OldLace",
+                backgroundColor: "#F7F7F9",
                 marginTop: "1rem",
+                borderRadius: "10px",
                 padding: "0.5rem",
                 boxShadow: "4px 4px 8px 0px rgba(34, 60, 80, 0.2)",
               }}
@@ -243,8 +278,17 @@ export default function App() {
             </div>
           ))}
         {(!connectedAccount || !display) && (
-          <button className='waveButton' onClick={connectWallet}>
+          <button
+            disabled={!chainApplicable}
+            className='waveButton'
+            onClick={connectWallet}
+          >
             Connect wallet
+          </button>
+        )}
+        {!chainApplicable && (
+          <button className='waveButton' onClick={changeNetwork}>
+            Change network to Rinkeby
           </button>
         )}
       </div>

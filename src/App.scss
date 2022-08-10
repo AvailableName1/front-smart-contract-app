@@ -1,7 +1,8 @@
 .mainContainer {
+  min-height: 100vh;
   display: flex;
   justify-content: center;
-  width: 100%;
+  align-items: flex-start;
   padding-top: 2rem;
   padding-bottom: 2rem;
 }
@@ -10,17 +11,24 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  max-width: 600px;
 }
 
 .header {
+  padding-left: 1rem;
+  padding-right: 1rem;
   text-align: center;
+  background-color: #fde12d;
 }
 
 .explanation {
   text-align: center;
   color: gray;
   margin-top: 16px;
+}
+
+.git-link {
+  text-decoration: none;
+  color: #3777ff;
 }
 
 .waveButton {
@@ -32,7 +40,12 @@
   transition: all 0.3s;
 }
 
+.waveButton:disabled {
+  cursor: default;
+  pointer-events: none;
+}
+
 .waveButton:hover {
   color: white;
-  background-color: plum;
+  background-color: #3777ff;
 }
